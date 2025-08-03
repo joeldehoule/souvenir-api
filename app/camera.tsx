@@ -1,10 +1,19 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ArrowLeft, RotateCw, Camera, Video, Image as ImageIcon } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { updateEvent, getEventById } from '@/lib/storage';
+import {
+  ArrowLeft,
+  RotateCw,
+  Camera,
+  Video,
+  Image as ImageIcon
+} from 'lucide-react-native';
 
 export default function CameraScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>(); // pour récupérer l'id de l'event
   const [facing, setFacing] = useState<CameraType>('back');
   const [mode, setMode] = useState<'photo' | 'video'>('photo');
   const [permission, requestPermission] = useCameraPermissions();
@@ -16,23 +25,59 @@ export default function CameraScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <Text style={styles.permissionTitle}>Camera Access Required</Text>
-        <Text style={styles.permissionText}>We need your permission to use the camera</Text>
+        <Text style={styles.permissionTitle}>L'accès à votre caméra est requis</Text>
+        <Text style={styles.permissionText}>
+          Nous avons besoin de votre permission pour utiliser votre caméra
+        </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+          <Text style={styles.permissionButtonText}>Accorder la permission</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   const toggleCameraFacing = () => {
-    setFacing(current => (current === 'back' ? 'front' : 'back'));
+    setFacing((current) => (current === 'back' ? 'front' : 'back'));
   };
 
-  const handleCapture = () => {
-    // Simulate capture
-    console.log(`Captured ${mode}`);
-    router.back();
+  const handleCapture = async () => {
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes:
+          mode === 'photo' ? ImagePicker.MediaType.IMAGE : ImagePicker.MediaType.VIDEO,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const uri = asset.uri;
+
+        const event = await getEventById(id!);
+        if (!event) {
+          Alert.alert("Erreur", "Impossible de trouver l'événement.");
+          router.back();
+          return;
+        }
+
+        if (mode === 'photo') {
+          const updatedPhotos = [...(event.photos || []), uri];
+          await updateEvent(id!, { ...event, photos: updatedPhotos });
+        } else {
+          const updatedVideos = [
+            ...(event.videos || []),
+            { uri, thumbnail: uri }, // tu pourras améliorer pour avoir un vrai thumbnail
+          ];
+          await updateEvent(id!, { ...event, videos: updatedVideos });
+        }
+
+        // Retour à la page event
+        router.back();
+      }
+    } catch (error) {
+      console.error("Erreur lors de la capture :", error);
+      Alert.alert("Erreur", "Impossible de capturer.");
+    }
   };
 
   return (
@@ -42,7 +87,7 @@ export default function CameraScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <ArrowLeft color="white" size={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Capture Memory</Text>
+          <Text style={styles.headerTitle}>Capturer un souvenir</Text>
           <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
             <RotateCw color="white" size={24} />
           </TouchableOpacity>
@@ -64,7 +109,7 @@ export default function CameraScreen() {
           >
             <Video color={mode === 'video' ? '#2E447A' : 'white'} size={20} />
             <Text style={[styles.modeText, mode === 'video' && styles.activeModeText]}>
-              Video
+              Vidéo
             </Text>
           </TouchableOpacity>
         </View>
@@ -75,7 +120,7 @@ export default function CameraScreen() {
             <TouchableOpacity style={styles.captureButton} onPress={handleCapture}>
               <View style={styles.captureButtonInner}>
                 {mode === 'photo' ? (
-                  <Camera color="#2E447A\" size={32} />
+                  <Camera color="#2E447A" size={32} />
                 ) : (
                   <Video color="#2E447A" size={32} />
                 )}
@@ -90,13 +135,8 @@ export default function CameraScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  camera: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: 'black' },
+  camera: { flex: 1 },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -173,17 +213,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 8,
   },
-  activeModeButton: {
-    backgroundColor: 'white',
-  },
+  activeModeButton: { backgroundColor: 'white' },
   modeText: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: 'white',
   },
-  activeModeText: {
-    color: '#2E447A',
-  },
+  activeModeText: { color: '#2E447A' },
   controls: {
     position: 'absolute',
     bottom: 0,
@@ -199,9 +235,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 48,
   },
-  placeholder: {
-    width: 60,
-  },
+  placeholder: { width: 60 },
   captureButton: {
     width: 80,
     height: 80,

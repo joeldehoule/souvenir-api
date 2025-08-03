@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "name": "Memento - Nos Plus Beaux Souvenirs",
+    "slug": "memento-nos-plus-beaux-souvenirs",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Cette application a besoin d’accéder à la caméra de votre appareil",
+        "NSMicrophoneUsageDescription": "Cette application a besoin d’accéder au micro de votre appareil"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -29,6 +33,22 @@
       "eas": {
         "projectId": "90997b97-12c4-4346-afdb-daeba9f72108"
       }
+    },
+    "androidStatusBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "#000000"
+    },
+    "androidNavigationBar": {
+      "visible": "sticky-immersive"
+    },
+    "android": {
+      "package": "com.madewithloveevents.memento",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
     }
   }
 }

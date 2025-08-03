@@ -1,100 +1,95 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+// app/(auth)/login.tsx
+
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { ArrowLeft, Mail, Phone } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, Phone } from 'lucide-react-native';
+import axios from 'axios';
 
 export default function LoginScreen() {
-  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
-  const [email, setEmail] = useState('');
+  const router = useRouter();
   const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // Simulate login - in real app, implement authentication
-    router.replace('/(tabs)');
+  const handleSendOTP = async () => {
+    if (phone.length < 8) {
+      Alert.alert('Erreur', 'Veuillez entrer un numéro de téléphone valide.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const apiKey = 'AIzaSyCFFxaHoK4kePQdE9SigKN0N7zQ6ZKUUXQ'; // mets ta clé ici
+
+      const formattedPhone = phone.startsWith('+') ? phone : '+225' + phone; // adapte l'indicatif si besoin
+
+      const response = await axios.post(
+        `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${apiKey}`,
+        {
+          phoneNumber: formattedPhone,
+          recaptchaToken: 'test' // mode test
+        }
+      );
+
+      console.log('Session info:', response.data.sessionInfo);
+
+      // Rediriger vers la page OTP en passant les infos nécessaires
+      router.push({
+        pathname: '/(auth)/otp',
+        params: {
+          phoneNumber: formattedPhone,
+          sessionInfo: response.data.sessionInfo
+        }
+      });
+
+    } catch (error: any) {
+      console.error(error.response?.data || error.message);
+      Alert.alert('Erreur', "Impossible d'envoyer le code OTP.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <LinearGradient
-      colors={['#F8FAFC', '#EDE9FE']}
-      style={styles.container}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
+    <LinearGradient colors={['#F8FAFC', '#EDE9FE']} style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <View style={styles.content}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <ArrowLeft color="#6B7280" size={24} />
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to access your events</Text>
+            <Text style={styles.title}>Connexion</Text>
+            <Text style={styles.subtitle}>Accédez à vos événements avec votre téléphone</Text>
           </View>
 
           <View style={styles.form}>
-            <View style={styles.methodSelector}>
-              <TouchableOpacity
-                style={[styles.methodButton, loginMethod === 'email' && styles.methodButtonActive]}
-                onPress={() => setLoginMethod('email')}
-              >
-                <Mail color={loginMethod === 'email' ? 'white' : '#6B7280'} size={20} />
-                <Text style={[styles.methodText, loginMethod === 'email' && styles.methodTextActive]}>
-                  Email
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.methodButton, loginMethod === 'phone' && styles.methodButtonActive]}
-                onPress={() => setLoginMethod('phone')}
-              >
-                <Phone color={loginMethod === 'phone' ? 'white' : '#6B7280'} size={20} />
-                <Text style={[styles.methodText, loginMethod === 'phone' && styles.methodTextActive]}>
-                  Phone
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Numéro de téléphone</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="+225XXXXXXXX"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
             </View>
 
-            {loginMethod === 'email' ? (
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email Address</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-            ) : (
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Phone Number</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your phone number"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                />
-              </View>
-            )}
-
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>
-                {loginMethod === 'email' ? 'Send Login Link' : 'Send OTP'}
-              </Text>
+            <TouchableOpacity style={styles.loginButton} onPress={handleSendOTP} disabled={loading}>
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.loginButtonText}>Envoyer le code OTP</Text>
+              )}
             </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
+            <Text style={styles.footerText}>Pas encore de compte ? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-              <Text style={styles.linkText}>Sign up</Text>
+              <Text style={styles.linkText}>Créer un compte</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -139,33 +134,6 @@ const styles = StyleSheet.create({
   form: {
     marginBottom: 32,
   },
-  methodSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
-  },
-  methodButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  methodButtonActive: {
-    backgroundColor: '#2E447A',
-  },
-  methodText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#6B7280',
-  },
-  methodTextActive: {
-    color: 'white',
-  },
   inputContainer: {
     marginBottom: 24,
   },
@@ -186,7 +154,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   loginButton: {
-    backgroundColor: '#2E447A',
+    backgroundColor: '#EA1467',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

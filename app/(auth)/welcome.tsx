@@ -6,7 +6,7 @@ import { Heart, Camera, Users } from 'lucide-react-native';
 export default function WelcomeScreen() {
   return (
     <LinearGradient
-      colors={['#F8FAFC', '#EDE9FE', '#F3E8FF']}
+      colors={['#F8FAFC', '#EDE9FE']}
       style={styles.container}
     >
       <View style={styles.content}>
@@ -14,22 +14,23 @@ export default function WelcomeScreen() {
           <View style={styles.logoCircle}>
             <Heart color="#2E447A" size={32} />
           </View>
-          <Text style={styles.logoText}>MemoEvent</Text>
-          <Text style={styles.tagline}>Capture Every Precious Moment</Text>
+          <Text style={styles.logoText}>Memento</Text>
+          <Text style={styles.tagline}>Nos Plus Beaux Souvenirs !</Text>
+          <Text style={styles.tagline3}>Par </Text><Text style={styles.tagline2}>MadeWithLove Events</Text>
         </View>
 
         <View style={styles.featuresContainer}>
           <View style={styles.feature}>
             <Camera color="#2E447A" size={24} />
-            <Text style={styles.featureText}>Share Photos & Videos</Text>
+            <Text style={styles.featureText}>Partagez des Photos & Videos</Text>
           </View>
           <View style={styles.feature}>
             <Users color="#0EA5E9" size={24} />
-            <Text style={styles.featureText}>Private Event Groups</Text>
+            <Text style={styles.featureText}>Evénements Privés</Text>
           </View>
           <View style={styles.feature}>
             <Heart color="#EA1467" size={24} />
-            <Text style={styles.featureText}>Create Lasting Memories</Text>
+            <Text style={styles.featureText}>Des Souvenirs Inestimables</Text>
           </View>
         </View>
 
@@ -38,14 +39,14 @@ export default function WelcomeScreen() {
             style={styles.primaryButton}
             onPress={() => router.push('/(auth)/login')}
           >
-            <Text style={styles.primaryButtonText}>Get Started</Text>
+            <Text style={styles.primaryButtonText}>Se connecter</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => router.push('/(auth)/signup')}
           >
-            <Text style={styles.secondaryButtonText}>Create Account</Text>
+            <Text style={styles.secondaryButtonText}>Créer un compte</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -92,6 +93,18 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
   },
+  tagline2: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: '#EA1467',
+    textAlign: 'center',
+  },
+  tagline3: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
   featuresContainer: {
     marginBottom: 48,
   },
@@ -134,7 +147,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   secondaryButton: {
-    backgroundColor: 'white',
+    backgroundColor: '#EA1467',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -144,6 +157,6 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: '#2E447A',
+    color: '#FFFFFF',
   },
 });

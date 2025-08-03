@@ -1,23 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
   ScrollView,
   Modal,
   Platform,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { ArrowLeft, Calendar, ChevronDown, Copy, MessageCircle, CheckCircle2 } from 'lucide-react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ClipboardExpo from 'expo-clipboard';
-import { nanoid } from 'nanoid/non-secure';  // <-- IMPORT MODIFIÉ ici
-import { saveEvent } from '@/lib/storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import {
+  ArrowLeft,
+  Calendar,
+  ChevronDown,
+  CheckCircle2,
+} from 'lucide-react-native';
 
 const EVENT_TYPES = [
   { id: 'Mariage', label: 'Mariage', color: '#2E447A' },
@@ -28,88 +30,76 @@ const EVENT_TYPES = [
   { id: 'Autres', label: 'Autres', color: '#8B5CF6' },
 ];
 
-export default function CreateEventScreen() {
+export default function EditEventScreen() {
+  const { id } = useLocalSearchParams();
   const [eventName, setEventName] = useState('');
   const [eventDateObj, setEventDateObj] = useState<Date | null>(null);
+  const [selectedType, setSelectedType] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedType, setSelectedType] = useState<string>('');
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [eventCode, setEventCode] = useState('');
-  const [newEvent, setNewEvent] = useState<any>(null); // Pour stocker l’événement créé
 
-  const eventDate = eventDateObj ? eventDateObj.toISOString() : '';
-
-  const handleCreateEvent = async () => {
-    if (eventName && eventDate && selectedType) {
-      const id = Date.now().toString(); // ID basé sur le timestamp
-      const code = nanoid(6).toUpperCase(); // Code stable de 6 caractères, généré via nanoid/non-secure
-
-      const createdEvent = {
-        id,
-        name: eventName,
-        date: eventDate,
-        type: selectedType,
-        eventCode: code,
-      };
-
+  useEffect(() => {
+    const loadEvent = async () => {
       try {
-        // Tu peux utiliser saveEvent si tu as cette fonction (sinon la méthode AsyncStorage directe ici fonctionne aussi)
-        // await saveEvent(createdEvent);
-
-        // Sinon sauvegarde dans AsyncStorage directement :
-        const existingEvents = await AsyncStorage.getItem('memento_events');
-        const events = existingEvents ? JSON.parse(existingEvents) : [];
-        events.push(createdEvent);
-        await AsyncStorage.setItem('memento_events', JSON.stringify(events));
-
-        setEventCode(code);
-        setNewEvent(createdEvent);
-        setShowSuccessModal(true);
-      } catch (error) {
-        console.error('Evénement non enregistré:', error);
-        Alert.alert('Erreur', 'Impossible d\'enregistrer l\'événement.');
+        const data = await AsyncStorage.getItem('memento_events');
+        const events = data ? JSON.parse(data) : [];
+        const event = events.find((e: any) => e.id === id);
+        if (event) {
+          setEventName(event.name);
+          setEventDateObj(new Date(event.date));
+          setSelectedType(event.type);
+        }
+      } catch (err) {
+        console.error('Erreur chargement:', err);
       }
-    } else {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
-    }
-  };
-
-  const handleCopyCode = async () => {
-    try {
-      await ClipboardExpo.setStringAsync(eventCode);
-      Alert.alert('Copié !', `Le code ${eventCode} a été copié dans le presse-papiers.`);
-    } catch (error) {
-      console.error('Erreur copie:', error);
-    }
-  };
-
-  const handleShareWhatsApp = () => {
-    const message = `Voici le code de mon événement : ${eventCode}`;
-    const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
-    router.push(url);
-  };
+    };
+    loadEvent();
+  }, [id]);
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    if (selectedDate) {
-      setEventDateObj(selectedDate);
-    }
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (selectedDate) setEventDateObj(selectedDate);
   };
 
   const selectedTypeObj = EVENT_TYPES.find(type => type.id === selectedType);
 
+  const handleSaveEdit = async () => {
+    if (!eventName || !eventDateObj || !selectedType) {
+      return Alert.alert('Erreur', 'Tous les champs sont obligatoires.');
+    }
+
+    try {
+      const data = await AsyncStorage.getItem('memento_events');
+      const events = data ? JSON.parse(data) : [];
+
+      const updatedEvents = events.map((e: any) =>
+        e.id === id
+          ? {
+              ...e,
+              name: eventName,
+              date: eventDateObj.toISOString(),
+              type: selectedType,
+            }
+          : e
+      );
+
+      await AsyncStorage.setItem('memento_events', JSON.stringify(updatedEvents));
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.error('Erreur sauvegarde:', err);
+    }
+  };
+
   return (
-    <LinearGradient colors={['#F8FAFC', '#EDE9FE']} style={styles.container}>
+    <LinearGradient colors={['#F8FAFC', '#FFFFFF']} style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <ArrowLeft color="#6B7280" size={24} />
           </TouchableOpacity>
-          <Text style={styles.title}>Créer votre événement</Text>
-          <Text style={styles.subtitle}>Créer l'espace privé de votre événement</Text>
+          <Text style={styles.title}>Modifier l'événement</Text>
+          <Text style={styles.subtitle}>Mettre à jour les infos de l’événement</Text>
         </View>
 
         <View style={styles.form}>
@@ -151,31 +141,27 @@ export default function CreateEventScreen() {
                 <View style={[styles.typeIndicator, { backgroundColor: selectedTypeObj.color }]} />
               )}
               <Text style={[styles.typeSelectorText, !selectedTypeObj && styles.placeholder]}>
-                {selectedTypeObj ? selectedTypeObj.label : 'Sélectionnez le type de votre événement'}
+                {selectedTypeObj ? selectedTypeObj.label : 'Sélectionnez un type'}
               </Text>
               <ChevronDown color="#9CA3AF" size={20} />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={[
-              styles.createButton,
-              (!eventName || !eventDate || !selectedType) && styles.createButtonDisabled,
-            ]}
-            onPress={handleCreateEvent}
-            disabled={!eventName || !eventDate || !selectedType}
+            style={[styles.createButton]}
+            onPress={handleSaveEdit}
           >
-            <Text style={styles.createButtonText}>Créer l'événement</Text>
+            <Text style={styles.createButtonText}>Enregistrer les modifications</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Modal de sélection du type */}
-      <Modal visible={showTypeModal} transparent={true} animationType="slide">
+      <Modal visible={showTypeModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Sélectionner le type d'événement</Text>
-            <ScrollView style={styles.typeList}>
+            <Text style={styles.modalTitle}>Sélectionnez le type</Text>
+            <ScrollView>
               {EVENT_TYPES.map(type => (
                 <TouchableOpacity
                   key={type.id}
@@ -201,40 +187,19 @@ export default function CreateEventScreen() {
       </Modal>
 
       {/* Modal de succès */}
-      <Modal visible={showSuccessModal} transparent={true} animationType="fade">
+      <Modal visible={showSuccessModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.successModalContent}>
             <CheckCircle2 size={64} color="#10B981" style={{ alignSelf: 'center', marginBottom: 10 }} />
-            <Text style={styles.successTitle}>Votre événement a été créé !</Text>
-            <Text style={styles.successSubtitle}>
-              Partagez le code de l'événement avec vos invités
-            </Text>
-            <View style={styles.eventCodeContainer}>
-              <Text style={styles.eventCode}>{eventCode}</Text>
-            </View>
-
-            <TouchableOpacity style={styles.fullWidthButton} onPress={handleCopyCode}>
-              <Copy color="white" size={20} style={styles.buttonIcon} />
-              <Text style={styles.fullWidthButtonText}>Copier le code</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.fullWidthButton2} onPress={handleShareWhatsApp}>
-              <MessageCircle color="white" size={20} style={styles.buttonIcon} />
-              <Text style={styles.fullWidthButtonText}>WhatsApp</Text>
-            </TouchableOpacity>
-
+            <Text style={styles.successTitle}>Modifications enregistrées !</Text>
             <TouchableOpacity
-              style={[styles.fullWidthButton, styles.continueButton]}
+              style={[styles.createButtonNew, { marginTop: 20 }]}
               onPress={() => {
                 setShowSuccessModal(false);
-                if (newEvent?.id) {
-                  router.push(`/event/${newEvent.id}`);
-                } else {
-                  Alert.alert('Erreur', 'Impossible de retrouver l’événement créé.');
-                }
+                router.push(`/event/${id}`);
               }}
             >
-              <Text style={styles.fullWidthButtonText}>Aller à l'événement</Text>
+              <Text style={styles.createButtonText}>Voir l’événement</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -242,7 +207,6 @@ export default function CreateEventScreen() {
     </LinearGradient>
   );
 }
-
 
 
 const styles = StyleSheet.create({
@@ -335,6 +299,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
+  },
+  createButtonNew: {
+    backgroundColor: '#EA1467',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    width: '100%',
+    marginVertical: 8,
   },
   createButtonDisabled: {
     backgroundColor: '#D1D5DB',

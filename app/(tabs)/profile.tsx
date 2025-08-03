@@ -1,40 +1,65 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
+// app/(tabs)/profile.tsx
+
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Bell, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Smartphone } from 'lucide-react-native';
 
 export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [username, setUsername] = useState('Utilisateur'); // Valeur par défaut
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      const storedImage = await AsyncStorage.getItem('memento_user_profile_image');
+      const storedPhone = await AsyncStorage.getItem('memento_user_phone');
+      const storedUsername = await AsyncStorage.getItem('memento_user_username');
+      if (storedImage) setProfileImage(storedImage);
+      if (storedPhone) setPhoneNumber(storedPhone);
+      if (storedUsername && storedUsername.trim().length > 0) {
+        setUsername(storedUsername);
+      }
+    };
+
+    fetchProfileData();
+  }, []);
 
   const handleLogout = () => {
     router.replace('/(auth)/welcome');
   };
 
   return (
-    <LinearGradient
-      colors={['#F8FAFC', '#FFFFFF']}
-      style={styles.container}
-    >
+    <LinearGradient colors={['#F8FAFC', '#FFFFFF']} style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
-          <Text style={styles.subtitle}>Manage your account and preferences</Text>
+          <Text style={styles.title}>Compte</Text>
+          <Text style={styles.subtitle}>Gérer votre compte et vos préférences</Text>
         </View>
 
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <User color="#2E447A" size={32} />
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+              ) : (
+                <User color="#2E447A" size={32} />
+              )}
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>John Doe</Text>
-              <Text style={styles.profileEmail}>john.doe@example.com</Text>
+              <Text style={styles.profileName}>{username}</Text>
+              <Text style={styles.profileEmail}>{phoneNumber || 'Numéro non défini'}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Text style={styles.editButtonText}>Edit</Text>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => router.push('/edit-profile')}
+          >
+            <Text style={styles.editButtonText}>Modifier</Text>
           </TouchableOpacity>
         </View>
 
@@ -43,7 +68,7 @@ export default function ProfileScreen() {
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Bell color="#6B7280" size={20} />
-              <Text style={styles.settingLabel}>Push Notifications</Text>
+              <Text style={styles.settingLabel}>Recevoir vos notifications</Text>
             </View>
             <Switch
               value={notificationsEnabled}
@@ -55,7 +80,7 @@ export default function ProfileScreen() {
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Smartphone color="#6B7280" size={20} />
-              <Text style={styles.settingLabel}>Auto-save Photos</Text>
+              <Text style={styles.settingLabel}>Sauvegarder automatiquement vos photos</Text>
             </View>
             <Switch
               value={autoSaveEnabled}
@@ -67,18 +92,18 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>Compte</Text>
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemContent}>
               <Shield color="#6B7280" size={20} />
-              <Text style={styles.menuItemText}>Privacy & Security</Text>
+              <Text style={styles.menuItemText}>Sécurité & Données personnelles</Text>
             </View>
             <ChevronRight color="#9CA3AF" size={20} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemContent}>
               <HelpCircle color="#6B7280" size={20} />
-              <Text style={styles.menuItemText}>Help & Support</Text>
+              <Text style={styles.menuItemText}>Aide & Support</Text>
             </View>
             <ChevronRight color="#9CA3AF" size={20} />
           </TouchableOpacity>
@@ -87,12 +112,13 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <LogOut color="#EF4444" size={20} />
-            <Text style={styles.logoutButtonText}>Log Out</Text>
+            <Text style={styles.logoutButtonText}>Déconnexion</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>MemoEvent v1.0.0</Text>
+          <Text style={styles.footerText}>Memento v1.0.0 - Par</Text>
+          <Text style={styles.footerText2}> MadeWithLove Events</Text>
         </View>
       </ScrollView>
     </LinearGradient>
@@ -147,6 +173,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   profileInfo: {
     flex: 1,
@@ -249,5 +281,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
+  },
+  footerText2: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: '#EA1467',
   },
 });

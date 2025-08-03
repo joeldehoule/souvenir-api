@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Calendar, Users, Camera } from 'lucide-react-native';
+import { Trash2, Edit2 } from 'lucide-react-native';
 
 interface Event {
   id: string;
@@ -12,13 +13,13 @@ interface Event {
 
 interface EventCardProps {
   event: Event;
-  onPress: () => void;
+  onPress?: () => void; // facultatif si jamais on veut l'utiliser sans clic
 }
 
 export function EventCard({ event, onPress }: EventCardProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('fr-FR', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -26,7 +27,11 @@ export function EventCard({ event, onPress }: EventCardProps) {
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       <View style={styles.cardHeader}>
         <View style={[styles.typeIndicator, { backgroundColor: event.color }]} />
         <View style={styles.cardInfo}>
@@ -36,7 +41,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
           <Text style={styles.eventType}>{event.type}</Text>
         </View>
       </View>
-      
+
       <View style={styles.cardDetails}>
         <View style={styles.detail}>
           <Calendar color="#6B7280" size={16} />
@@ -44,16 +49,25 @@ export function EventCard({ event, onPress }: EventCardProps) {
         </View>
         <View style={styles.detail}>
           <Users color="#6B7280" size={16} />
-          <Text style={styles.detailText}>{event.memberCount} members</Text>
+          <Text style={styles.detailText}>{event.memberCount} membres</Text>
         </View>
       </View>
-      
+
       <View style={styles.cardFooter}>
         <View style={styles.cameraIcon}>
           <Camera color={event.color} size={16} />
         </View>
-        <Text style={[styles.viewEvent, { color: event.color }]}>View Event</Text>
+        <Text style={[styles.viewEvent, { color: event.color }]}>
+          Voir l'événement
+        </Text>
       </View>
+
+      <View style={styles.infoRow}>
+        <Text style={styles.infoText}>
+          Code de l'événement : {event.eventCode}
+        </Text>
+      </View>
+
     </TouchableOpacity>
   );
 }
