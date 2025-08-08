@@ -2,7 +2,7 @@
 
 const axios = require("axios");
 
-export default async function handler(req, res) {
+export async function POST(request: Request) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Méthode non autorisée" });
   }
