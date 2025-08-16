@@ -81,7 +81,7 @@ export default function SouvenirScreen() {
       const allMedia = selectedMedia.map((m: any) => ({ url: m.uri }));
       setProgress(30);
 
-      const response = await fetch('https://souvenir-api-iota.vercel.app/api/generate-souvenir', {
+      const response = await fetch('https://souvenir-api-rho.vercel.app//api/generate-souvenir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ media: allMedia, style: selectedStyle }),
