@@ -64,6 +64,15 @@ function InnerTabs() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="debug-asyncstorage"
+        options={{
+          title: 'debug',
+          tabBarIcon: ({ size, color }) => (
+            <Settings size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

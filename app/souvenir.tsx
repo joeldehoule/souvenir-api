@@ -1,22 +1,21 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Play, Download, Share, Heart } from 'lucide-react-native';
-import { getEventById } from '@/lib/storage';
 import VideoPlayerModal from '@/components/video-player';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SOUVENIR_STYLES = [
   {
-    id: 'romantic',
-    name: 'Romantic',
-    description: 'Soft transitions with elegant music',
-    thumbnail: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=300',
-    color: '#EA1467',
+    id: 'classic',
+    name: 'Classic',
+    description: 'Timeless style with gentle pacing',
+    thumbnail: 'https://images.pexels.com/photos/1729931/pexels-photo-1729931.jpeg?auto=compress&cs=tinysrgb&w=300',
+    color: '#2E447A',
   },
   {
     id: 'fun',
@@ -26,16 +25,17 @@ const SOUVENIR_STYLES = [
     color: '#0EA5E9',
   },
   {
-    id: 'classic',
-    name: 'Classic',
-    description: 'Timeless style with gentle pacing',
-    thumbnail: 'https://images.pexels.com/photos/1729931/pexels-photo-1729931.jpeg?auto=compress&cs=tinysrgb&w=300',
-    color: '#2E447A',
+    id: 'romantic',
+    name: 'Romantic',
+    description: 'Soft transitions with elegant music',
+    thumbnail: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=300',
+    color: '#EA1467',
   },
 ];
 
 export default function SouvenirScreen() {
-  const { id: eventId } = useLocalSearchParams();
+  const { eventId, mediaType } = useLocalSearchParams<{ eventId: string; mediaType: 'photos' | 'videos' | 'guestbook' }>();
+  const [selectedMedia, setSelectedMedia] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState<string>('');
   const [generatedVideo, setGeneratedVideo] = useState<string>('');
@@ -44,53 +44,104 @@ export default function SouvenirScreen() {
   const [isSharing, setIsSharing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const handleDownload = async () => {
-    try {
-      if (!generatedVideo) return;
+  useEffect(() => {
+    const fetchEventMedia = async () => {
+      try {
+        if (!eventId) return;
 
-      // Demander la permission
+        const tempKey = `souvenir_${eventId}`;
+        const storedMedia = await AsyncStorage.getItem(tempKey);
+        if (storedMedia) {
+          setSelectedMedia(JSON.parse(storedMedia));
+        } else {
+          Alert.alert('Aucun média', 'Aucun média disponible pour cet événement.');
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des médias :', error);
+      }
+    };
+    fetchEventMedia();
+  }, [eventId]);
+
+
+  const handleGenerateVideo = async () => {
+    if (!selectedStyle) {
+      Alert.alert('Style non sélectionné', 'Veuillez choisir un style avant de générer la vidéo.');
+      return;
+    }
+    if (selectedMedia.length === 0) {
+      Alert.alert('Aucun média', 'Aucun média disponible pour générer la vidéo.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setProgress(10);
+
+    try {
+      const allMedia = selectedMedia.map((m: any) => ({ url: m.uri }));
+      setProgress(30);
+
+      const response = await fetch('https://souvenir-api-iota.vercel.app/api/generate-souvenir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ media: allMedia, style: selectedStyle }),
+      });
+
+      // Log la réponse brute
+      const text = await response.text();
+      console.log('Réponse brute de l’API :', text);
+
+      // Ensuite seulement essaie de parser en JSON si c’est bien du JSON
+
+      setProgress(60);
+      const { videoUrl } = await response.json();
+
+      if (!videoUrl) throw new Error('Erreur : pas de videoUrl retournée par l’API');
+      setGeneratedVideo(videoUrl);
+      setProgress(100);
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert('Erreur', error?.message || 'Impossible de générer la vidéo.');
+      setGeneratedVideo('');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!generatedVideo) return;
+    try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission refusée', 'Impossible d’accéder à la galerie.');
         return;
       }
 
-      setIsDownloading(true); // Active le spinner
-
-    const fileUri = FileSystem.documentDirectory + 'souvenir.mp4';
-
-    const fileInfo = await FileSystem.getInfoAsync(fileUri);
+      setIsDownloading(true);
+      const fileUri = FileSystem.documentDirectory + 'souvenir.mp4';
+      const fileInfo = await FileSystem.getInfoAsync(fileUri);
       if (!fileInfo.exists) {
-        const download = FileSystem.createDownloadResumable(
-          generatedVideo,
-          fileUri
-        );
+        const download = FileSystem.createDownloadResumable(generatedVideo, fileUri);
         await download.downloadAsync();
       }
 
       Alert.alert('Succès', 'La vidéo a été téléchargée localement avec succès.');
-      } catch (error) {
-        Alert.alert('Erreur', 'Le téléchargement a échoué.');
-        console.error(error);
-      } finally {
-        setIsDownloading(false); // Stoppe le spinner
-      }
-    };
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Erreur', 'Le téléchargement a échoué.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const handleShare = async () => {
+    if (!generatedVideo) return;
     try {
-      if (!generatedVideo) return;
-
-      setIsSharing(true); // Démarre l'attente
-
+      setIsSharing(true);
       const fileUri = FileSystem.documentDirectory + 'souvenir.mp4';
-
       const fileInfo = await FileSystem.getInfoAsync(fileUri);
       if (!fileInfo.exists) {
-        const download = FileSystem.createDownloadResumable(
-          generatedVideo,
-          fileUri
-        );
+        const download = FileSystem.createDownloadResumable(generatedVideo, fileUri);
         await download.downloadAsync();
       }
 
@@ -102,57 +153,10 @@ export default function SouvenirScreen() {
 
       await Sharing.shareAsync(fileUri);
     } catch (error) {
-      Alert.alert('Erreur', 'Le partage a échoué.');
       console.error(error);
+      Alert.alert('Erreur', 'Le partage a échoué.');
     } finally {
-      setIsSharing(false); // Arrête l’attente
-    }
-  };
-
-
-  const handleGenerateVideo = async () => {
-    if (!selectedStyle) return;
-
-    console.log("ID de l'événement:", id); // Ajouté pour test
-
-    setIsGenerating(true);
-    setProgress(10);
-
-    try {
-      const event = await getEventById(id as string);
-      console.log("Données événement:", event); // Ajouté pour test
-
-      const photos = event?.photos || [];
-      const videos = event?.videos || [];
-      const guestbook = event?.guestbookVideos || [];
-
-      const allMedia = [...photos, ...videos, ...guestbook].map((uri) => ({ url: uri }));
-
-      if (allMedia.length === 0) throw new Error("Aucun média trouvé.");
-
-      setProgress(30);
-
-      const response = await fetch('/api/generate-souvenir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          media: allMedia,
-          style: selectedStyle,
-        }),
-      });
-
-      setProgress(60);
-
-      const { videoUrl } = await response.json();
-
-      if (!videoUrl) throw new Error("Erreur lors de la génération de la vidéo.");
-      setProgress(100);
-      setGeneratedVideo(videoUrl);
-    } catch (error) {
-      Alert.alert("Erreur", error?.message || "Impossible de générer la vidéo.");
-      setGeneratedVideo('');
-    } finally {
-      setIsGenerating(false);
+      setIsSharing(false);
     }
   };
 
@@ -187,33 +191,23 @@ export default function SouvenirScreen() {
           </View>
 
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={handleDownload}
-              disabled={isDownloading}
-            >
-              {isDownloading ? (
-                <ActivityIndicator size="small" color="#2E447A" />
-              ) : (
+            <TouchableOpacity style={styles.actionButton} onPress={handleDownload} disabled={isDownloading}>
+              {isDownloading ? <ActivityIndicator size="small" color="#2E447A" /> :
                 <>
                   <Download color="#2E447A" size={20} />
                   <Text style={styles.actionButtonText}>Télécharger</Text>
                 </>
-              )}
+              }
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton} onPress={handleShare} disabled={isSharing}>
-              {isSharing ? (
-                <ActivityIndicator size="small" color="#2E447A" />
-              ) : (
+              {isSharing ? <ActivityIndicator size="small" color="#2E447A" /> :
                 <>
                   <Share color="#2E447A" size={20} />
                   <Text style={styles.actionButtonText}>Partager</Text>
                 </>
-              )}
+              }
             </TouchableOpacity>
-
-
           </View>
 
           <TouchableOpacity
@@ -228,11 +222,7 @@ export default function SouvenirScreen() {
             <Text style={styles.createAnotherText}>Créer un autre souvenir</Text>
           </TouchableOpacity>
 
-          <VideoPlayerModal
-            visible={showPlayer}
-            onClose={() => setShowPlayer(false)}
-            videoUri={generatedVideo}
-          />
+          <VideoPlayerModal visible={showPlayer} onClose={() => setShowPlayer(false)} videoUri={generatedVideo} />
         </LinearGradient>
       ) : (
         <LinearGradient colors={['#F8FAFC', '#FFFFFF']} style={styles.container}>
@@ -265,10 +255,7 @@ export default function SouvenirScreen() {
                 {SOUVENIR_STYLES.map((style) => (
                   <TouchableOpacity
                     key={style.id}
-                    style={[
-                      styles.styleCard,
-                      selectedStyle === style.id && styles.selectedStyleCard
-                    ]}
+                    style={[styles.styleCard, selectedStyle === style.id && styles.selectedStyleCard]}
                     onPress={() => setSelectedStyle(style.id)}
                   >
                     <Image source={{ uri: style.thumbnail }} style={styles.styleThumbnail} />
@@ -292,10 +279,7 @@ export default function SouvenirScreen() {
 
           {!isGenerating && selectedStyle && (
             <View style={styles.bottomAction}>
-              <TouchableOpacity
-                style={styles.generateButton}
-                onPress={handleGenerateVideo}
-              >
+              <TouchableOpacity style={styles.generateButton} onPress={handleGenerateVideo}>
                 <Heart color="white" size={20} />
                 <Text style={styles.generateButtonText}>Générer mon souvenir</Text>
               </TouchableOpacity>

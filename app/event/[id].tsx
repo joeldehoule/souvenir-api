@@ -43,12 +43,10 @@ export default function EventScreen() {
   const [event, setEvent] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<TabType>('info');
 
-
   const screenWidth = Dimensions.get('window').width;
   const itemSpacing = 3;
   const numColumns = 4;
   const itemSize = (screenWidth - itemSpacing * (numColumns + 1)) / numColumns;
-
 
   const fetchEvent = async () => {
     if (!id) return;
@@ -487,10 +485,30 @@ const handleDeleteMedia = async (
 
       {activeTab !== 'info' && (
         <View style={styles.floatingButton}>
-          <TouchableOpacity style={styles.generateButton} onPress={() => router.push('/souvenir')}>
-            <Heart color="white" size={20} />
-            <Text style={styles.generateButtonText}>Générer votre souvenir</Text>
+          <TouchableOpacity
+            style={styles.generateButton} onPress={async () => {
+              // 1. Récupérer les médias selon l'onglet actif
+              let mediaToSend: { uri: string }[] = [];
+              if (activeTab === 'photos') mediaToSend = event.photos || [];
+              else if (activeTab === 'videos') mediaToSend = event.videos || [];
+              else mediaToSend = event.guestbookVideos || [];
+
+              if (mediaToSend.length === 0) {
+                Alert.alert('Aucun média', 'Aucun média disponible pour cet événement.');
+                return;
+              }
+
+              // 2. Stocker temporairement les médias dans AsyncStorage
+              const tempKey = `souvenir_${event.id}`;
+              await AsyncStorage.setItem(tempKey, JSON.stringify(mediaToSend));
+
+              // 3. Naviguer vers la page souvenir avec eventId et mediaType
+              router.push(`/souvenir?eventId=${event.id}&mediaType=${activeTab}`);
+            }}
+          >
+            <Text>Générer votre souvenir</Text>
           </TouchableOpacity>
+
 
           <TouchableOpacity style={styles.shareButton2} onPress={GoToEvents}>
             <Text style={styles.shareButtonText}>Retour à mes événements</Text>
